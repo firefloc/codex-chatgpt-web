@@ -12,6 +12,7 @@ const { embeddedRuntimeInvocation, runtimeInvocation } = require("./runtime-comm
 const { redactText } = require("./logging.cjs");
 const { DETACH_OWNED_CHILD, terminateOwnedProcessTree } = require("./process-tree.cjs");
 const { inspectClaudeIntegrationStatus } = require("./claude-integration-status.cjs");
+const { inspectHermesIntegrationStatus } = require("./hermes-integration-status.cjs");
 const { windowsTrustEnvironment } = require("./windows-trust.cjs");
 
 const MAX_CAPTURE_BYTES = 8 * 1024 * 1024;
@@ -242,6 +243,21 @@ class RuntimeHost {
     return inspectClaudeIntegrationStatus({
       journalPath: path.join(coreHome, "claude", "integration-journal.json"),
       settingsPath: path.join(this.claudeHome, "settings.json"),
+    });
+  }
+
+  hermesIntegrationStatus() {
+    const coreHome = this.supervisor.coreHome
+      || (typeof this.supervisor.configPath === "string"
+        ? path.dirname(this.supervisor.configPath)
+        : path.join(os.homedir(), ".codex-chatgpt-web"));
+    const hermesHome = process.env.HERMES_HOME?.trim()
+      ? resolveUserPath(process.env.HERMES_HOME.trim())
+      : path.join(os.homedir(), ".hermes");
+    return inspectHermesIntegrationStatus({
+      journalPath: path.join(coreHome, "hermes", "integration-journal.json"),
+      envPath: path.join(hermesHome, ".env"),
+      providerDir: path.join(hermesHome, "plugins", "model-providers", "gpt-web"),
     });
   }
 

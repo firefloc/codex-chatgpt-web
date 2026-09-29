@@ -464,10 +464,12 @@ test("fresh-conversation snapshot uses runtime configuration and manual mode cle
     setupConnectorName: () => "Codex Native2", mcpCredentialsConfigured: () => true,
     setBrowserInteractionMode: async mode => { config.browserInteractionMode = mode; if (mode === "manual") config.experimentalFreshConversationPerTurn = false; return { configured: true }; },
     claudeIntegrationStatus: () => "missing",
+    hermesIntegrationStatus: () => "missing",
   };
   const sandbox = {
     handle: (name, handler) => handlers.set(name, handler), runtimeHost,
     reconcileClaudeSetupState: () => ({ claudeSetupComplete: false, claudeSetupOutdated: false }),
+    reconcileHermesSetupState: () => ({ hermesSetupComplete: false, hermesSetupOutdated: false }),
     releaseRetainedConversation: require("../electron/retained-turn-release.cjs").releaseRetainedConversation,
     stateStore: { read: () => ({ ...state }), update: patch => Object.assign(state, patch) },
     browserHost: { activeTraceId: null, turnTabs: new Map(), currentOperation: () => null, snapshot: () => ({}),

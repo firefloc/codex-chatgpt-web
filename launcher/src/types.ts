@@ -37,6 +37,8 @@ export interface LauncherState {
   codexSetupComplete: boolean;
   claudeSetupComplete: boolean;
   claudeSetupOutdated: boolean;
+  hermesSetupComplete: boolean;
+  hermesSetupOutdated: boolean;
   coreSetupComplete?: boolean;
   codexCatalogVerified?: boolean;
   mcpSetupComplete?: boolean;
@@ -206,6 +208,8 @@ export interface LauncherApi {
   uninstallIntegration(): Promise<{ cancelled: true } | { cancelled: false; state: LauncherState }>;
   setupCodex(): Promise<{ ok: boolean; stdout: string; restartRequired: boolean }>;
   setupClaude(): Promise<{ ok: boolean; stdout: string; restartRequired: boolean }>;
+  setupHermes(): Promise<{ ok: boolean; stdout: string; restartRequired: boolean }>;
+  disconnectHermes(): Promise<{ ok: boolean; stdout: string; restartRequired: boolean }>;
   setupMcp(input: {
     tunnelId?: string;
     runtimeKey?: string;

@@ -36,6 +36,7 @@ const {
 } = require("./logging.cjs");
 const { RuntimeHost } = require("./runtime.cjs");
 const { reconcileClaudeSetupState } = require("./claude-integration-status.cjs");
+const { reconcileHermesSetupState } = require("./hermes-integration-status.cjs");
 const { ensurePackagedRuntime, waitForPackagedRuntimeSource } = require("./runtime-install.cjs");
 const { RuntimeSupervisor } = require("./runtime-supervisor.cjs");
 const { DEVELOPMENT_PROFILE, resolveLauncherProfile } = require("./profile.cjs");
@@ -546,10 +547,17 @@ function registerIpc({ logger, stateStore }) {
     const claude = reconcileClaudeSetupState(
       runtimeHost?.claudeIntegrationStatus() ?? "missing",
     );
-    const state = current.claudeSetupComplete === claude.claudeSetupComplete
+    const hermes = reconcileHermesSetupState(
+      runtimeHost?.hermesIntegrationStatus() ?? "missing",
+    );
+    const claudeState = current.claudeSetupComplete === claude.claudeSetupComplete
       && current.claudeSetupOutdated === claude.claudeSetupOutdated
       ? current
       : stateStore.update(claude);
+    const state = claudeState.hermesSetupComplete === hermes.hermesSetupComplete
+      && claudeState.hermesSetupOutdated === hermes.hermesSetupOutdated
+      ? claudeState
+      : stateStore.update(hermes);
     return {
       profile: LAUNCHER_PROFILE.kind,
       profilePaths: {
@@ -993,8 +1001,17 @@ function registerIpc({ logger, stateStore }) {
     if (installsCodex && !IS_DEV_PROFILE) startCatalogVerificationMonitor({ logger, stateStore });
     return { ok: true, stdout: result.stdout, restartRequired: installsCodex && !IS_DEV_PROFILE };
   };
+  // The Hermes integration only writes files under ~/.hermes: it needs neither a ChatGPT
+  // sign-in nor a browser smoke test, so it does not go through setupIntegration.
+  const hermesIntegration = async (connect) => {
+    const result = connect ? await runtimeHost.setupHermesIntegration() : await runtimeHost.disconnectHermesIntegration();
+    stateStore.update({ hermesSetupComplete: connect, hermesSetupOutdated: false });
+    return { ok: true, stdout: result.stdout, restartRequired: true };
+  };
   handle("launcher:setup-codex", () => setupIntegration("codex"));
   handle("launcher:setup-claude", () => setupIntegration("claude"));
+  handle("launcher:setup-hermes", () => hermesIntegration(true));
+  handle("launcher:disconnect-hermes", () => hermesIntegration(false));
   handle("launcher:setup-mcp", async (_event, input) => {
     const currentMode = stateStore.read().browserInteractionMode;
     const interactionMode = input?.interactionMode === undefined ? currentMode : input.interactionMode;

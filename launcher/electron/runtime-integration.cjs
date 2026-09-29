@@ -433,6 +433,26 @@ module.exports = {
     });
   },
 
+  async setupHermesIntegration() {
+    this.assertProductionProfile("Hermes integration setup");
+    return this.run("hermes-connect", ["hermes", "connect"], {
+      embedded: true,
+      message: "Installing ChatGPT Web models into Hermes",
+      successMessage: "Hermes integration installed",
+      timeoutMs: 15_000,
+    });
+  },
+
+  async disconnectHermesIntegration() {
+    this.assertProductionProfile("Hermes integration removal");
+    return this.run("hermes-disconnect", ["hermes", "disconnect"], {
+      embedded: true,
+      message: "Removing the Hermes integration",
+      successMessage: "Hermes integration removed",
+      timeoutMs: 15_000,
+    });
+  },
+
   async uninstallIntegration() {
     this.assertProductionProfile("Codex integration removal");
     const name = "uninstall-integration";

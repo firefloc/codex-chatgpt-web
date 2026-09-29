@@ -1097,6 +1097,14 @@ function SetupSurface({
     await api!.setupClaude();
     updateState((await api!.snapshot()).state);
   });
+  const installHermes = () => run(async () => {
+    await api!.setupHermes();
+    updateState((await api!.snapshot()).state);
+  });
+  const disconnectHermes = () => run(async () => {
+    await api!.disconnectHermes();
+    updateState((await api!.snapshot()).state);
+  });
 
   return (
     <ContentSurface
@@ -1157,6 +1165,26 @@ function SetupSurface({
             : !devProfile ? copy.installClaude : undefined}
           title={devProfile ? copy.devStepInstall : copy.stepInstall}
         />
+        {!devProfile ? (
+          <SetupRow
+            action={snapshot.state.hermesSetupComplete || snapshot.state.hermesSetupOutdated
+              ? copy.reinstallHermes
+              : copy.installHermes}
+            complete={snapshot.state.hermesSetupComplete === true}
+            description={copy.stepHermesBody}
+            disabled={busy || (manualInteraction
+              ? snapshot.state.mcpRuntimeInstalled !== true
+              : !snapshot.smokePassed && snapshot.state.coreSetupComplete !== true)}
+            index={manualInteraction ? 2 : 4}
+            onAction={installHermes}
+            onSecondaryAction={disconnectHermes}
+            repeatable
+            secondaryAction={snapshot.state.hermesSetupComplete || snapshot.state.hermesSetupOutdated
+              ? copy.disconnectHermes
+              : undefined}
+            title={copy.stepHermes}
+          />
+        ) : null}
       </div>
 
       {!devProfile && snapshot.state.codexRestartRequired ? (
