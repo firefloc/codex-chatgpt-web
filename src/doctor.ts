@@ -3,6 +3,7 @@ import type { AppConfig } from "./config";
 import { getConfigDir, getConfigPath, loadConfig, stripUtf8Bom } from "./config";
 import { join } from "node:path";
 import { inspectCodexIntegration } from "./codex-integration";
+import { inspectHermesIntegrationStatus } from "./hermes-integration";
 import { browserLoginStateExists, loginVerificationMarkerPath } from "./browser-login";
 import { getServiceStatus } from "./service";
 import { tunnelStatus } from "./tunnel";
@@ -156,6 +157,11 @@ export async function runDoctor(): Promise<DoctorReport> {
   } else {
     checks.push({ id: "codex", status: "ok", message: "Codex native model route is installed" });
   }
+
+  const hermes = inspectHermesIntegrationStatus();
+  checks.push(hermes === "installed"
+    ? { id: "hermes", status: "ok", message: "Hermes ChatGPT Web model provider is installed" }
+    : { id: "hermes", status: "warning", message: `Hermes ChatGPT Web model provider is ${hermes}` });
 
   const service = getServiceStatus();
   if (config.browserHost === "launcher") {

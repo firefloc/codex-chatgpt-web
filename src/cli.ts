@@ -18,6 +18,7 @@ import {
   uninstallCodexIntegration,
 } from "./codex-integration";
 import { uninstallClaudeIntegration } from "./claude-integration";
+import { getHermesEnvPath, getHermesProviderDir, installHermesIntegration, inspectHermesIntegrationStatus, uninstallHermesIntegration } from "./hermes-integration";
 import { runCodexInterruptHook } from "./codex-interrupt-cli";
 import { formatDoctorReport, runDoctor } from "./doctor";
 import { runChatGptMcpMain } from "./adapters/chatgpt-web/mcp-main";
@@ -325,6 +326,35 @@ async function subagentsCommand(args: string[]): Promise<void> {
   }, null, 2)}\n`);
 }
 
+async function hermesCommand(args: string[]): Promise<void> {
+  const json = takeFlag(args, "--json");
+  const action = args.shift() ?? "status";
+  assertNoArgs(args);
+  if (action === "connect") {
+    const config = existsSync(getConfigPath()) ? loadConfig() : defaultConfig();
+    const journal = installHermesIntegration(config);
+    stdout.write(json
+      ? `${JSON.stringify({ status: "installed", installed: true, changed: true, envPath: journal.envPath, providerDir: journal.providerDir }, null, 2)}\n`
+      : `Hermes integration: installed\n  env:      ${journal.envPath}\n  provider: ${journal.providerDir}\n`);
+    process.stderr.write("Restart Hermes, or reload its plugins, so the ChatGPT Web models appear in /model.\n");
+    return;
+  }
+  if (action === "disconnect") {
+    const result = uninstallHermesIntegration();
+    stdout.write(json
+      ? `${JSON.stringify({ installed: false, ...result }, null, 2)}\n`
+      : result.changed
+        ? "Hermes integration removed and the previous state restored.\n"
+        : "Hermes integration was not installed.\n");
+    return;
+  }
+  if (action !== "status") throw new Error(`Unknown hermes action: ${action}`);
+  const status = inspectHermesIntegrationStatus();
+  stdout.write(json
+    ? `${JSON.stringify({ status, installed: status === "installed", envPath: getHermesEnvPath(), providerDir: getHermesProviderDir() }, null, 2)}\n`
+    : `Hermes integration: ${status}\n  env:      ${getHermesEnvPath()}\n  provider: ${getHermesProviderDir()}\n`);
+}
+
 async function serviceCommand(args: string[]): Promise<void> {
   const action = args.shift() ?? "status";
   assertNoArgs(args);
@@ -417,6 +447,7 @@ async function uninstallCommand(args: string[]): Promise<void> {
   }
   if (config && process.platform === "darwin" && !launcherRuntimeStopped) await uninstallService(config);
   uninstallClaudeIntegration();
+  uninstallHermesIntegration();
   uninstallCodexIntegration();
   if (!keepData) rmSync(getConfigDir(), { recursive: true, force: true });
   stdout.write(keepData ? "Uninstalled; private application data was preserved.\n" : "Uninstalled and removed private application data.\n");
@@ -445,6 +476,7 @@ async function main(): Promise<void> {
   else if (command === "route") await routeCommand(args);
   else if (command === "provider") codexProviderCommand(args);
   else if (command === "subagents") await subagentsCommand(args);
+  else if (command === "hermes") await hermesCommand(args);
   else if (command === "browser") {
     const action = args.shift();
     assertNoArgs(args);
