@@ -217,11 +217,18 @@ function readJournal(): HermesIntegrationJournal | undefined {
     || !value.previous) {
     throw new Error(`Unsupported Hermes integration journal: ${path}`);
   }
-  return value as HermesIntegrationJournal;
+  const journal = value as HermesIntegrationJournal;
+  // The journal is machine-wide but records the Hermes home it was written for. A journal for
+  // another home describes that home, so here it reads as absent: status reports "missing" and
+  // install/preflight start fresh for this home instead of raising "belongs to".
+  return identity(journal.envPath) === identity(getHermesEnvPath()) ? journal : undefined;
+}
+
+function identity(value: string): string {
+  return process.platform === "win32" ? resolve(value).toLowerCase() : resolve(value);
 }
 
 function assertJournalPath(journal: HermesIntegrationJournal, path: string): void {
-  const identity = (value: string) => process.platform === "win32" ? resolve(value).toLowerCase() : resolve(value);
   if (identity(journal.envPath) !== identity(path)) {
     throw new Error(`Hermes integration journal belongs to ${journal.envPath}, not ${path}`);
   }

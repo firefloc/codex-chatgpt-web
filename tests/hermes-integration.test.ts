@@ -200,4 +200,39 @@ describe("reversible Hermes integration", () => {
     expect(uninstallHermesIntegration()).toEqual({ changed: false });
     expect(() => preflightHermesIntegration(defaultConfig("browser-only"))).not.toThrow();
   });
+
+  test("reads a journal written for another Hermes home as missing, then adopts the current home", () => {
+    const config = defaultConfig("browser-only");
+    const { root, home } = fixture();
+    installHermesIntegration(config);
+    expect(inspectHermesIntegrationStatus()).toBe("installed");
+
+    // The journal path is shared per machine; point this process at a second, never-installed home.
+    const otherHome = join(root, "hermes-home-2");
+    process.env.HERMES_HOME = otherHome;
+    mkdirSync(otherHome, { recursive: true });
+    const initial = "# other home\nKEEP=1\n";
+    writeFileSync(join(otherHome, ".env"), initial);
+
+    // The journal records the first home, so from here it is absent, not installed.
+    expect(getHermesEnvPath()).toBe(join(otherHome, ".env"));
+    expect(inspectHermesIntegrationStatus()).toBe("missing");
+    expect(() => preflightHermesIntegration(config)).not.toThrow();
+
+    // Installing adopts this home instead of raising "belongs to".
+    installHermesIntegration(config);
+    expect(inspectHermesIntegrationStatus()).toBe("installed");
+    expect(journal().envPath).toBe(join(otherHome, ".env"));
+
+    expect(uninstallHermesIntegration()).toEqual({ changed: true });
+    expect(inspectHermesIntegrationStatus()).toBe("missing");
+    expect(readFileSync(join(otherHome, ".env"), "utf8")).toBe(initial);
+    expect(existsSync(join(otherHome, "plugins"))).toBe(false);
+    expect(existsSync(getHermesIntegrationJournalPath())).toBe(false);
+
+    // The first home kept its files; only the shared journal moved on.
+    expect(readFileSync(join(home, "plugins", "model-providers", "gpt-web", "__init__.py"), "utf8"))
+      .toContain("register_provider(gpt_web)");
+    expect(readFileSync(join(home, ".env"), "utf8")).toContain(`${HERMES_ENV_KEY}=${HERMES_ENV_MARKER}`);
+  });
 });

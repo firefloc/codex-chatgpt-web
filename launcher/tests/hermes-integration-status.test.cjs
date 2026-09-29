@@ -39,6 +39,17 @@ test("does not claim a provider directory without a managed journal", (t) => {
   assert.equal(inspectHermesIntegrationStatus(files), "missing");
 });
 
+test("reads a journal recorded for another Hermes home as missing", (t) => {
+  const files = fixture();
+  t.after(() => fs.rmSync(files.root, { recursive: true, force: true }));
+
+  const journal = JSON.parse(fs.readFileSync(files.journalPath, "utf8"));
+  journal.envPath = path.join(files.root, "other-home", ".env");
+  fs.writeFileSync(files.journalPath, `${JSON.stringify(journal, null, 2)}\n`);
+
+  assert.equal(inspectHermesIntegrationStatus(files), "missing");
+});
+
 test("marks a drifted key, a drifted provider file, or a missing .env as outdated", (t) => {
   const files = fixture();
   t.after(() => fs.rmSync(files.root, { recursive: true, force: true }));

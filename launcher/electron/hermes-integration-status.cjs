@@ -14,6 +14,11 @@ function readEnvValue(raw, key) {
   return undefined;
 }
 
+/** Case-insensitive, resolved path identity — the same rule the TypeScript side applies. */
+function identity(value) {
+  return process.platform === "win32" ? path.resolve(value).toLowerCase() : path.resolve(value);
+}
+
 /**
  * Mirrors inspectClaudeIntegrationStatus, but Hermes owns a plain `key=value` env file and a
  * provider directory instead of a JSON settings object. Terminal state is "installed" rather
@@ -22,7 +27,12 @@ function readEnvValue(raw, key) {
 function inspectHermesIntegrationStatus({ journalPath, envPath, providerDir }) {
   if (!fs.existsSync(journalPath)) return "missing";
   try {
-    const installed = readJsonFile(journalPath)?.installed;
+    const journal = readJsonFile(journalPath);
+    // The journal is machine-wide but records the Hermes home it was written for. A journal for
+    // another home describes that home, so here it is missing rather than this home's install.
+    if (typeof journal?.envPath !== "string") return "outdated";
+    if (identity(journal.envPath) !== identity(envPath)) return "missing";
+    const installed = journal.installed;
     const value = installed?.env?.[HERMES_ENV_KEY];
     const files = installed?.files;
     if (typeof value !== "string" || !files || typeof files !== "object" || Array.isArray(files)) {
